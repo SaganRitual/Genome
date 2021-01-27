@@ -65,22 +65,76 @@ class Genome {
     /// - Parameters:
     ///   - parent0: One of the parents
     ///   - parent1: The other parent
-    init(mate parent0: Genome, with parent1: Genome) {
-        self.cGenes = parent0.cGenes
+    init(
+        mate parent0: Genome, with parent1: Genome,
+        parent0Weight: Float,
+        mutationProbability: Float = Config.mutationProbability
+    ) {
+        self.cGenes = Config.cGenes
         self.combination = .duplex
 
-        let genes = makeUnsafeMutableBuffer(count: cGenes)
-        self.toDeallocate = genes
-        self.genes = UnsafeBufferPointer(genes)
+        parent0.makeAlleleWeights(parent0Weight)
 
-        zip(parent0.genes.enumerated(), parent1.genes).forEach {
-            let (index, lhsGene) = $0, rhsGene = $1
-            genes[index] = combineDuplex(lhs: lhsGene, rhs: rhsGene)
-        }
+        var parent1Haplex = [Float](repeating: 0, count: cGenes)
+        vDSP.multiply(parent0.weakAlleleWeights, parent1.genes, result: &parent1Haplex)
+
+        var mGenes = makeUnsafeMutableBuffer(count: cGenes)
+        self.toDeallocate = mGenes
+        self.genes = UnsafeBufferPointer(mGenes)
+
+        vDSP.add(parent0.haplex, parent1Haplex, result: &mGenes)
+        vDSP.add(parent0.genesMutationMap, genes, result: &mGenes)
     }
+
+    /// Create a genome that is the result of mating the two parent
+    /// genomes, with mutations applied according to the mutator
+    /// configuration.
+    /// - Parameters:
+    ///   - parent0: One of the parents
+    ///   - parent1: The other parent
+//    init(mate parent0: Genome, with parent1: Genome) {
+//        self.cGenes = parent0.cGenes
+//        self.combination = .duplex
+//
+//        let genes = makeUnsafeMutableBuffer(count: cGenes)
+//        self.toDeallocate = genes
+//        self.genes = UnsafeBufferPointer(genes)
+//
+//        zip(parent0.genes.enumerated(), parent1.genes).forEach {
+//            let (index, lhsGene) = $0, rhsGene = $1
+//            genes[index] = combineDuplex(lhs: lhsGene, rhs: rhsGene)
+//        }
+//    }
+
+    var alleleWeights = [Float]()
+    var genesMutationMap = [Float]()
+    var weakAlleleWeights = [Float]()
+    var haplex = [Float]()
 }
 
 extension Genome {
+    func makeAlleleWeights(_ parent0Weight: Float) {
+
+        alleleWeights = (0..<cGenes).map { _ in
+            mutator.randomer.positive() * parent0Weight
+        }
+
+        genesMutationMap = (0..<cGenes).map { _ in
+            mutator.randomer.inRange(0.0..<1.0) < Config.mutationProbability ?
+                0 : mutator.gausser.next()!
+        }
+
+        weakAlleleWeights = [Float](repeating: 1, count: cGenes)
+        haplex = [Float](repeating: 0, count: cGenes)
+
+        vDSP.multiply(alleleWeights, genes, result: &haplex)
+
+        vDSP.add(
+            multiplication: (a: alleleWeights, b: -1),
+            weakAlleleWeights, result: &weakAlleleWeights
+        )
+    }
+
     func combineDuplex(lhs: Float, rhs: Float) -> Float {
         // select lhs/rhs, mutate/no
         // lhs + rhs average
