@@ -6,13 +6,24 @@ import Foundation
 class Genome {
     enum Combination { case clone, duplex, miracle }
 
+    func generateMutationMap() -> UnsafeBufferPointer<Float> {
+        let s = FastRandomerIterator(.randomPositive, bufferSize: Config.cGenes).asBuffer!
+        let m = UnsafeMutableBufferPointer<Float>.allocate(capacity: Config.cGenes)
+
+        (0..<s.count).forEach { m[$0] = s[$0] > Config.mutationProbability ? 0 : 1 }
+        return UnsafeBufferPointer(m)
+    }
+
+    var gausser = FastRandomerIterator(.gaussian)
+    var randomer = FastRandomerIterator(.random)
+    var halfHalfer = FastRandomerIterator(.halfHalf, bufferSize: Config.cGenes).asBuffer!
+
     let cGenes: Int
     let combination: Combination
     let genes: UnsafeBufferPointer<Float>
-    let mutator = Mutator()
-    let toDeallocate: UnsafeMutableBufferPointer<Float>
+    let toDeallocate: UnsafeMutableBufferPointer<Float>?
 
-    deinit { toDeallocate.deallocate() }
+    deinit { toDeallocate?.deallocate() }
 
     /// Create a genome with all random values
     /// - Parameter cGenes: The count of genes to create in the genome, that
@@ -21,13 +32,13 @@ class Genome {
         self.cGenes = cGenes
         self.combination = .miracle
 
-        let genes = makeUnsafeMutableBuffer(count: cGenes)
-        self.toDeallocate = genes
-        self.genes = UnsafeBufferPointer(genes)
+        var mGenes = makeUnsafeMutableBuffer(count: cGenes)
+        self.toDeallocate = mGenes
+        self.genes = UnsafeBufferPointer(mGenes)
 
-        (0..<cGenes).forEach {
-            genes[$0] = mutator.randomer.inRange(-1.0..<1.0)
-        }
+        let r = FastRandomerIterator(.random, bufferSize: cGenes).asBuffer!
+
+        vDSP.multiply(1, r, result: &mGenes)
     }
 
     /// Create a genome that is a clone of the parent. Cloning involves
@@ -38,11 +49,16 @@ class Genome {
         self.cGenes = parent.cGenes
         self.combination = .clone
 
-        let genes = makeUnsafeMutableBuffer(count: cGenes)
-        self.toDeallocate = genes
-        self.genes = UnsafeBufferPointer(genes)
+        var mGenes = makeUnsafeMutableBuffer(count: cGenes)
+        self.toDeallocate = mGenes
+        self.genes = UnsafeBufferPointer(mGenes)
 
-        mutator.mutate(from: parent.genes, to: genes, cGenes: parent.cGenes)
+        let gaussian = FastRandomerIterator(.gaussian, bufferSize: cGenes).asBuffer!
+        let map = generateMutationMap()
+
+        vDSP.multiply(gaussian, map, result: &mGenes)
+        vDSP.add(parent.genes, mGenes, result: &mGenes)
+        vDSP.clip(mGenes, to: -1...1, result: &mGenes)
     }
 
     /// Create a geome that is an exact copy of the parent. No mutations.
@@ -55,7 +71,7 @@ class Genome {
         self.toDeallocate = genes
         self.genes = UnsafeBufferPointer(genes)
 
-        // vDSP doesn't have a simple copy
+        // vDSP doesn't have a simple copy; I've looked a million times
         vDSP.add(0, parent.genes, result: &genes)
     }
 
@@ -73,103 +89,22 @@ class Genome {
         self.cGenes = Config.cGenes
         self.combination = .duplex
 
-        parent0.makeAlleleWeights(parent0Weight)
-
-        var parent1Haplex = [Float](repeating: 0, count: cGenes)
-        vDSP.multiply(parent0.weakAlleleWeights, parent1.genes, result: &parent1Haplex)
-
         var mGenes = makeUnsafeMutableBuffer(count: cGenes)
         self.toDeallocate = mGenes
         self.genes = UnsafeBufferPointer(mGenes)
 
-        vDSP.add(parent0.haplex, parent1Haplex, result: &mGenes)
-        vDSP.add(parent0.genesMutationMap, genes, result: &mGenes)
-    }
+        var randomer = FastRandomerIterator(.random)
+        var gaussian = FastRandomerIterator(.gaussian)
 
-    /// Create a genome that is the result of mating the two parent
-    /// genomes, with mutations applied according to the mutator
-    /// configuration.
-    /// - Parameters:
-    ///   - parent0: One of the parents
-    ///   - parent1: The other parent
-//    init(mate parent0: Genome, with parent1: Genome) {
-//        self.cGenes = parent0.cGenes
-//        self.combination = .duplex
-//
-//        let genes = makeUnsafeMutableBuffer(count: cGenes)
-//        self.toDeallocate = genes
-//        self.genes = UnsafeBufferPointer(genes)
-//
-//        zip(parent0.genes.enumerated(), parent1.genes).forEach {
-//            let (index, lhsGene) = $0, rhsGene = $1
-//            genes[index] = combineDuplex(lhs: lhsGene, rhs: rhsGene)
-//        }
-//    }
+        for ss in 0..<cGenes {
+            let takeParent0Gene = randomer.inRange(0..<1) < parent0Weight
+            let yesMutate = randomer.inRange(0..<1) < Config.mutationProbability
 
-    var alleleWeights = [Float]()
-    var genesMutationMap = [Float]()
-    var weakAlleleWeights = [Float]()
-    var haplex = [Float]()
-}
+            mGenes[ss] = takeParent0Gene ? parent0.genes[ss] : parent1.genes[ss]
 
-extension Genome {
-    func makeAlleleWeights(_ parent0Weight: Float) {
-
-        alleleWeights = (0..<cGenes).map { _ in
-            mutator.randomer.positive() * parent0Weight
+            if yesMutate { mGenes[ss] += gaussian.next()! }
         }
 
-        genesMutationMap = (0..<cGenes).map { _ in
-            mutator.randomer.inRange(0.0..<1.0) < Config.mutationProbability ?
-                0 : mutator.gausser.next()!
-        }
-
-        weakAlleleWeights = [Float](repeating: 1, count: cGenes)
-        haplex = [Float](repeating: 0, count: cGenes)
-
-        vDSP.multiply(alleleWeights, genes, result: &haplex)
-
-        vDSP.add(
-            multiplication: (a: alleleWeights, b: -1),
-            weakAlleleWeights, result: &weakAlleleWeights
-        )
-    }
-
-    func combineDuplex(lhs: Float, rhs: Float) -> Float {
-        // select lhs/rhs, mutate/no
-        // lhs + rhs average
-        // w1 * lhs + (1 - w1) * rhs
-        switch mutator.randomer.inRange(0..<8) {
-        case 0:
-            return lhs
-        case 1:
-            return rhs
-        case 2:
-            return mutator.maybeMutate(from: lhs)
-        case 3:
-            return mutator.maybeMutate(from: rhs)
-
-        case 4:
-            let LL = mutator.randomer.inRange(0.0..<1.0)
-            let RR = 1 - LL
-            let newAllele = LL * lhs + RR * rhs
-            return newAllele
-
-        case 5:
-            let LL = mutator.randomer.inRange(0.0..<1.0)
-            let RR = 1 - LL
-            let newAllele = LL * lhs + RR * rhs
-            return mutator.maybeMutate(from: newAllele)
-
-        case 6:
-            let newAllele = 0.5 * lhs + 0.5 * rhs
-            return newAllele
-
-        case 7:
-            let newAllele = 0.5 * lhs + 0.5 * rhs
-            return mutator.maybeMutate(from: newAllele)
-
-        default: fatalError()
-        }
+        vDSP.clip(mGenes, to: -1...1, result: &mGenes)
     }
 }
