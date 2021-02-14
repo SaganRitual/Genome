@@ -6,73 +6,91 @@ import Foundation
 class Genome {
     enum Combination { case clone, duplex, miracle }
 
-    func generateMutationMap() -> UnsafeBufferPointer<Float> {
-        let s = FastRandomerIterator(.randomPositive, bufferSize: Config.cGenes).asBuffer!
-        let m = UnsafeMutableBufferPointer<Float>.allocate(capacity: Config.cGenes)
-
-        (0..<s.count).forEach { m[$0] = s[$0] > Config.mutationProbability ? 0 : 1 }
-        return UnsafeBufferPointer(m)
-    }
-
     var gausser = FastRandomerIterator(.gaussian)
     var randomer = FastRandomerIterator(.random)
-    var halfHalfer = FastRandomerIterator(.halfHalf, bufferSize: Config.cGenes).asBuffer!
 
     let cGenes: Int
     let combination: Combination
     let genes: UnsafeBufferPointer<Float>
-    let toDeallocate: UnsafeMutableBufferPointer<Float>?
-
-    deinit { toDeallocate?.deallocate() }
 
     /// Create a genome with all random values
     /// - Parameter cGenes: The count of genes to create in the genome, that
     ///                     is, the length of the genome.
-    init(cGenes: Int) {
+    init(cGenes: Int, heap: UnsafeMutableRawPointer) {
+        gameCore.preconditionIsOnSerialQueue()
+
         self.cGenes = cGenes
         self.combination = .miracle
 
-        var mGenes = makeUnsafeMutableBuffer(count: cGenes)
-        self.toDeallocate = mGenes
-        self.genes = UnsafeBufferPointer(mGenes)
-
         let r = FastRandomerIterator(.random, bufferSize: cGenes).asBuffer!
 
-        vDSP.multiply(1, r, result: &mGenes)
+        var m = SwiftPointer<Float>.mutableBufferFrom(
+            heap, pointee: Float.self, elementCount: cGenes
+        )
+
+        // Because vDSP doesn't have a simple copy
+        vDSP.add(0, r, result: &m)
+
+        self.genes = SwiftPointer.bufferFrom(heap, elementCount: cGenes)
+    }
+
+    /// Create a genome using the specified gene sequence
+    /// - Parameter genes: The gene values
+    init(genes: UnsafeBufferPointer<Float>) {
+        gameCore.preconditionIsOnSerialQueue()
+
+        self.cGenes = genes.count
+        self.combination = .miracle
+        self.genes = genes
     }
 
     /// Create a genome that is a clone of the parent. Cloning involves
     /// a pass through the mutator, which mutates the outputs depending on
     /// configuration settings.
     /// - Parameter parent: The genome from which to clone
-    init(cloneFrom parent: Genome) {
+    init(
+        cloneFrom parent: Genome, mutationProbability: Float,
+        heap: UnsafeMutableRawPointer
+    ) {
+        gameCore.preconditionIsOnSerialQueue()
+
         self.cGenes = parent.cGenes
         self.combination = .clone
 
-        var mGenes = makeUnsafeMutableBuffer(count: cGenes)
-        self.toDeallocate = mGenes
-        self.genes = UnsafeBufferPointer(mGenes)
+        var m = SwiftPointer<Float>.mutableBufferFrom(
+            heap, pointee: Float.self, elementCount: cGenes
+        )
 
-        let gaussian = FastRandomerIterator(.gaussian, bufferSize: cGenes).asBuffer!
-        let map = generateMutationMap()
+        let g = FastRandomerIterator(.gaussian, bufferSize: cGenes).asBuffer!
 
-        vDSP.multiply(gaussian, map, result: &mGenes)
-        vDSP.add(parent.genes, mGenes, result: &mGenes)
-        vDSP.clip(mGenes, to: -1...1, result: &mGenes)
+        // Mark 1's where we want the parent alleles to go, based
+        // on mutation probability
+        Genome.generateMutationMap(cGenes, mutationProbability, heap: m)
+
+        vDSP.multiply(g, m, result: &m)
+        vDSP.add(parent.genes, m, result: &m)
+        vDSP.clip(m, to: -1...1, result: &m)
+
+        self.genes = SwiftPointer.bufferFrom(heap, elementCount: cGenes)
     }
 
     /// Create a geome that is an exact copy of the parent. No mutations.
     /// - Parameter parent: The genome from which to copy
-    init(exactCopyFrom parent: Genome) {
+    /// - Parameter heap: The destination of the new genome
+    init(exactCopyFrom parent: Genome, heap: UnsafeMutableRawPointer) {
+        gameCore.preconditionIsOnSerialQueue()
+
         self.cGenes = parent.cGenes
         self.combination = .clone
 
-        var genes = makeUnsafeMutableBuffer(count: cGenes)
-        self.toDeallocate = genes
-        self.genes = UnsafeBufferPointer(genes)
+        var m = SwiftPointer<Float>.mutableBufferFrom(
+            heap, pointee: Float.self, elementCount: cGenes
+        )
 
         // vDSP doesn't have a simple copy; I've looked a million times
-        vDSP.add(0, parent.genes, result: &genes)
+        vDSP.add(0, parent.genes, result: &m)
+
+        self.genes = SwiftPointer.bufferFrom(heap, elementCount: cGenes)
     }
 
     /// Create a genome that is the result of mating the two parent
@@ -84,27 +102,42 @@ class Genome {
     init(
         mate parent0: Genome, with parent1: Genome,
         parent0Weight: Float,
-        mutationProbability: Float = Config.mutationProbability
+        heap: UnsafeMutableRawPointer,
+        mutationProbability: Float = 0.8
     ) {
-        self.cGenes = Config.cGenes
+        gameCore.preconditionIsOnSerialQueue()
+
+        self.cGenes = parent0.cGenes
         self.combination = .duplex
 
-        var mGenes = makeUnsafeMutableBuffer(count: cGenes)
-        self.toDeallocate = mGenes
-        self.genes = UnsafeBufferPointer(mGenes)
+        var m = SwiftPointer<Float>.mutableBufferFrom(
+            heap, pointee: Float.self, elementCount: cGenes
+        )
 
         var randomer = FastRandomerIterator(.random)
         var gaussian = FastRandomerIterator(.gaussian)
 
         for ss in 0..<cGenes {
             let takeParent0Gene = randomer.inRange(0..<1) < parent0Weight
-            let yesMutate = randomer.inRange(0..<1) < Config.mutationProbability
+            let yesMutate = randomer.inRange(0..<1) < mutationProbability
 
-            mGenes[ss] = takeParent0Gene ? parent0.genes[ss] : parent1.genes[ss]
+            m[ss] = takeParent0Gene ? parent0.genes[ss] : parent1.genes[ss]
 
-            if yesMutate { mGenes[ss] += gaussian.next()! }
+            if yesMutate { m[ss] += gaussian.next()! }
         }
 
-        vDSP.clip(mGenes, to: -1...1, result: &mGenes)
+        vDSP.clip(m, to: -1...1, result: &m)
+
+        self.genes = SwiftPointer.bufferFrom(heap, elementCount: cGenes)
+    }
+}
+
+extension Genome {
+    static private func generateMutationMap(
+        _ cGenes: Int, _ mutationProbability: Float,
+        heap: UnsafeMutableBufferPointer<Float>
+    ) {
+        let s = FastRandomerIterator(.randomPositive, bufferSize: cGenes).asBuffer!
+        (0..<s.count).forEach { heap[$0] = (s[$0] > mutationProbability) ? 0 : 1 }
     }
 }
