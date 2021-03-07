@@ -7,15 +7,6 @@ protocol HasGenomeProtocol {
     var genome: Genome { get }
 }
 
-protocol RandomerFactoryProtocol {
-
-}
-
-protocol RandomerProtocol {
-    static 
-    init(_ combintion: Genome.Combination)
-}
-
 class Genome {
     enum Combination { case clone, duplex, miracle }
 
@@ -29,17 +20,13 @@ class Genome {
     /// Create a genome with all random values
     /// - Parameter cGenes: The count of genes to create in the genome, that
     ///                     is, the length of the genome.
-    init(cGenes: Int, heap: UnsafeMutableRawPointer) {
+    init(cGenes: Int, heap: UnsafeMutableBufferPointer<Float>) {
         self.cGenes = cGenes
         self.combination = .miracle
 
-        let g = SwiftPointer<Float>.mutableBufferFrom(
-            heap, pointee: Float.self, elementCount: cGenes
-        )
+        _ = heap.initialize(from: randomer)
 
-        for ss in 0..<cGenes { g[ss] = randomer.next()! }
-
-        self.genes = SwiftPointer<Float>.bufferFrom(heap, elementCount: cGenes)
+        self.genes = UnsafeBufferPointer(heap)
     }
 
     /// Create a genome using the specified gene sequence
@@ -56,42 +43,34 @@ class Genome {
     /// - Parameter parent: The genome from which to clone
     init(
         cloneFrom parent: HasGenomeProtocol, mutationProbability: Float,
-        heap: UnsafeMutableRawPointer
+        heap: UnsafeMutableBufferPointer<Float>
     ) {
         self.cGenes = parent.genome.cGenes
         self.combination = .clone
 
-        let map = SwiftPointer<Float>.mutableBufferFrom(
-            heap, pointee: Float.self, elementCount: cGenes
-        )
-
         // Mark 1's where we want the parent alleles to go, based
         // on mutation probability
-        Genome.generateMutationMap(cGenes, mutationProbability, heap: map)
+        Genome.generateMutationMap(cGenes, mutationProbability, heap: heap)
 
         for ss in 0..<cGenes {
-            map[ss] *= gausser.next()!
-            map[ss] += parent.genome.genes[ss]
-            map[ss] = max(-1, min(map[ss], 1))
+            heap[ss] *= gausser.next()!
+            heap[ss] += parent.genome.genes[ss]
+            heap[ss] = max(-1, min(heap[ss], 1))
         }
 
-        self.genes = SwiftPointer.bufferFrom(heap, elementCount: cGenes)
+        self.genes = UnsafeBufferPointer(heap)
     }
 
     /// Create a geome that is an exact copy of the parent. No mutations.
     /// - Parameter parent: The genome from which to copy
     /// - Parameter heap: The destination of the new genome
-    init(exactCopyFrom parent: HasGenomeProtocol, heap: UnsafeMutableRawPointer) {
+    init(exactCopyFrom parent: HasGenomeProtocol, heap: UnsafeMutableBufferPointer<Float>) {
         self.cGenes = parent.genome.cGenes
         self.combination = .clone
 
-        let m = SwiftPointer<Float>.mutableBufferFrom(
-            heap, pointee: Float.self, elementCount: cGenes
-        )
+        _ = heap.initialize(from: randomer)
 
-        for ss in 0..<cGenes { m[ss] = parent.genome.genes[ss] }
-
-        self.genes = SwiftPointer.bufferFrom(heap, elementCount: cGenes)
+        self.genes = UnsafeBufferPointer(heap)
     }
 
     /// Create a genome that is the result of mating the two parent
@@ -103,29 +82,25 @@ class Genome {
     init(
         mate parent0: HasGenomeProtocol, with parent1: HasGenomeProtocol?,
         parent0Weight: Float,
-        heap: UnsafeMutableRawPointer,
+        heap: UnsafeMutableBufferPointer<Float>,
         mutationProbability: Float = 0.8
     ) {
         self.cGenes = parent0.genome.cGenes
         self.combination = .duplex
 
-        let m = SwiftPointer<Float>.mutableBufferFrom(
-            heap, pointee: Float.self, elementCount: cGenes
-        )
-
         for ss in 0..<cGenes {
             let takeParent0Gene = randomer.inRange(0..<1) < parent0Weight
             let yesMutate = randomer.inRange(0..<1) < mutationProbability
 
-            m[ss] = takeParent0Gene || parent1 == nil ?
+            heap[ss] = takeParent0Gene || parent1 == nil ?
                 parent0.genome.genes[ss] : parent1!.genome.genes[ss]
 
-            if yesMutate { m[ss] += gausser.next()! }
+            if yesMutate { heap[ss] += gausser.next()! }
 
-            m[ss] = max(-1, min(m[ss], 1))
+            heap[ss] = max(-1, min(heap[ss], 1))
         }
 
-        self.genes = SwiftPointer.bufferFrom(heap, elementCount: cGenes)
+        self.genes = UnsafeBufferPointer(heap)
     }
 }
 

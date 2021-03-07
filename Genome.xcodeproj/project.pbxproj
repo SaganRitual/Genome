@@ -7,9 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D404F7E325E3320D0061A641 /* Genome.swift in Sources */ = {isa = PBXBuildFile; fileRef = D404F7E225E3320D0061A641 /* Genome.swift */; };
 		D4A0B48325BA041600A67292 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A0B48225BA041600A67292 /* main.swift */; };
-		D4A0B48B25BA044500A67292 /* Genome.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A0B48A25BA044500A67292 /* Genome.swift */; };
-		D4A0B48F25BA04E900A67292 /* Mutator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A0B48E25BA04E900A67292 /* Mutator.swift */; };
 		D4A0B49925BA0A7A00A67292 /* FastRandomer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A0B49725BA0A7A00A67292 /* FastRandomer.swift */; };
 		D4A0B49D25BA3F4D00A67292 /* Utilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A0B49C25BA3F4D00A67292 /* Utilities.swift */; };
 /* End PBXBuildFile section */
@@ -27,10 +26,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		D404F7E225E3320D0061A641 /* Genome.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Genome.swift; sourceTree = "<group>"; };
 		D4A0B47F25BA041600A67292 /* Genome */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Genome; sourceTree = BUILT_PRODUCTS_DIR; };
 		D4A0B48225BA041600A67292 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
-		D4A0B48A25BA044500A67292 /* Genome.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Genome.swift; sourceTree = "<group>"; };
-		D4A0B48E25BA04E900A67292 /* Mutator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Mutator.swift; sourceTree = "<group>"; };
 		D4A0B49725BA0A7A00A67292 /* FastRandomer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = FastRandomer.swift; path = ../../Tools/FastRandomer.swift; sourceTree = "<group>"; };
 		D4A0B49C25BA3F4D00A67292 /* Utilities.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = Utilities.swift; path = ../../Tools/Utilities.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -65,10 +63,9 @@
 		D4A0B48125BA041600A67292 /* Genome */ = {
 			isa = PBXGroup;
 			children = (
+				D404F7E225E3320D0061A641 /* Genome.swift */,
 				D4A0B49125BA09CF00A67292 /* Tools */,
-				D4A0B48A25BA044500A67292 /* Genome.swift */,
 				D4A0B48225BA041600A67292 /* main.swift */,
-				D4A0B48E25BA04E900A67292 /* Mutator.swift */,
 			);
 			path = Genome;
 			sourceTree = "<group>";
@@ -109,7 +106,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 1230;
-				LastUpgradeCheck = 1230;
+				LastUpgradeCheck = 1240;
 				TargetAttributes = {
 					D4A0B47E25BA041600A67292 = {
 						CreatedOnToolsVersion = 12.3;
@@ -139,8 +136,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D4A0B48F25BA04E900A67292 /* Mutator.swift in Sources */,
-				D4A0B48B25BA044500A67292 /* Genome.swift in Sources */,
+				D404F7E325E3320D0061A641 /* Genome.swift in Sources */,
 				D4A0B49925BA0A7A00A67292 /* FastRandomer.swift in Sources */,
 				D4A0B49D25BA3F4D00A67292 /* Utilities.swift in Sources */,
 				D4A0B48325BA041600A67292 /* main.swift in Sources */,
@@ -268,6 +264,7 @@
 		D4A0B48725BA041600A67292 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = DD983V4X84;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -279,6 +276,7 @@
 		D4A0B48825BA041600A67292 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = DD983V4X84;
 				ENABLE_HARDENED_RUNTIME = YES;
