@@ -8,7 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		D404F7E325E3320D0061A641 /* Genome.swift in Sources */ = {isa = PBXBuildFile; fileRef = D404F7E225E3320D0061A641 /* Genome.swift */; };
-		D407380025FDC1480033289D /* StaticRandomer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40737FF25FDC1480033289D /* StaticRandomer.swift */; };
+		D407380425FDD0C50033289D /* StaticRandomerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D407380325FDD0C50033289D /* StaticRandomerTests.swift */; };
+		D407380725FDE02C0033289D /* StaticRandomer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D407380625FDE02C0033289D /* StaticRandomer.swift */; };
+		D407380B25FDE9440033289D /* GenomeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D407380A25FDE9440033289D /* GenomeTests.swift */; };
 		D4A0B48325BA041600A67292 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A0B48225BA041600A67292 /* main.swift */; };
 /* End PBXBuildFile section */
 
@@ -26,7 +28,9 @@
 
 /* Begin PBXFileReference section */
 		D404F7E225E3320D0061A641 /* Genome.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Genome.swift; sourceTree = "<group>"; };
-		D40737FF25FDC1480033289D /* StaticRandomer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StaticRandomer.swift; sourceTree = SOURCE_ROOT; };
+		D407380325FDD0C50033289D /* StaticRandomerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaticRandomerTests.swift; sourceTree = "<group>"; };
+		D407380625FDE02C0033289D /* StaticRandomer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StaticRandomer.swift; sourceTree = "<group>"; };
+		D407380A25FDE9440033289D /* GenomeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenomeTests.swift; sourceTree = "<group>"; };
 		D4A0B47F25BA041600A67292 /* Genome */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Genome; sourceTree = BUILT_PRODUCTS_DIR; };
 		D4A0B48225BA041600A67292 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -62,8 +66,10 @@
 			isa = PBXGroup;
 			children = (
 				D404F7E225E3320D0061A641 /* Genome.swift */,
+				D407380A25FDE9440033289D /* GenomeTests.swift */,
 				D4A0B48225BA041600A67292 /* main.swift */,
-				D40737FF25FDC1480033289D /* StaticRandomer.swift */,
+				D407380625FDE02C0033289D /* StaticRandomer.swift */,
+				D407380325FDD0C50033289D /* StaticRandomerTests.swift */,
 			);
 			path = Genome;
 			sourceTree = "<group>";
@@ -126,8 +132,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				D404F7E325E3320D0061A641 /* Genome.swift in Sources */,
-				D407380025FDC1480033289D /* StaticRandomer.swift in Sources */,
 				D4A0B48325BA041600A67292 /* main.swift in Sources */,
+				D407380425FDD0C50033289D /* StaticRandomerTests.swift in Sources */,
+				D407380B25FDE9440033289D /* GenomeTests.swift in Sources */,
+				D407380725FDE02C0033289D /* StaticRandomer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
