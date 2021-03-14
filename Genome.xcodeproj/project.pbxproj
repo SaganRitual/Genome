@@ -8,9 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		D404F7E325E3320D0061A641 /* Genome.swift in Sources */ = {isa = PBXBuildFile; fileRef = D404F7E225E3320D0061A641 /* Genome.swift */; };
+		D407380025FDC1480033289D /* StaticRandomer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40737FF25FDC1480033289D /* StaticRandomer.swift */; };
 		D4A0B48325BA041600A67292 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A0B48225BA041600A67292 /* main.swift */; };
-		D4A0B49925BA0A7A00A67292 /* FastRandomer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A0B49725BA0A7A00A67292 /* FastRandomer.swift */; };
-		D4A0B49D25BA3F4D00A67292 /* Utilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A0B49C25BA3F4D00A67292 /* Utilities.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -27,10 +26,9 @@
 
 /* Begin PBXFileReference section */
 		D404F7E225E3320D0061A641 /* Genome.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Genome.swift; sourceTree = "<group>"; };
+		D40737FF25FDC1480033289D /* StaticRandomer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StaticRandomer.swift; sourceTree = SOURCE_ROOT; };
 		D4A0B47F25BA041600A67292 /* Genome */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Genome; sourceTree = BUILT_PRODUCTS_DIR; };
 		D4A0B48225BA041600A67292 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
-		D4A0B49725BA0A7A00A67292 /* FastRandomer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = FastRandomer.swift; path = ../../Tools/FastRandomer.swift; sourceTree = "<group>"; };
-		D4A0B49C25BA3F4D00A67292 /* Utilities.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = Utilities.swift; path = ../../Tools/Utilities.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,19 +62,10 @@
 			isa = PBXGroup;
 			children = (
 				D404F7E225E3320D0061A641 /* Genome.swift */,
-				D4A0B49125BA09CF00A67292 /* Tools */,
 				D4A0B48225BA041600A67292 /* main.swift */,
+				D40737FF25FDC1480033289D /* StaticRandomer.swift */,
 			);
 			path = Genome;
-			sourceTree = "<group>";
-		};
-		D4A0B49125BA09CF00A67292 /* Tools */ = {
-			isa = PBXGroup;
-			children = (
-				D4A0B49725BA0A7A00A67292 /* FastRandomer.swift */,
-				D4A0B49C25BA3F4D00A67292 /* Utilities.swift */,
-			);
-			name = Tools;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -137,8 +126,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D404F7E325E3320D0061A641 /* Genome.swift in Sources */,
-				D4A0B49925BA0A7A00A67292 /* FastRandomer.swift in Sources */,
-				D4A0B49D25BA3F4D00A67292 /* Utilities.swift in Sources */,
+				D407380025FDC1480033289D /* StaticRandomer.swift in Sources */,
 				D4A0B48325BA041600A67292 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
