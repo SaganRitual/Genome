@@ -3,52 +3,42 @@
 import Accelerate
 import Foundation
 
-protocol HasGenomeProtocol {
-    var genome: Genome { get }
-}
-
-class GRandorator {
-    static var randorator = FastRandomer(Config.randomerCSamplesToGenerate)
-
-    func makeIterator(
-        _ mode: FastRandomerIterator.Mode, bufferSize: Int? = nil
-    ) -> UnsafeBufferPointer<Double> {
-        FastRandomerIterator(
-            randomer: GRandorator.randorator, mode, bufferSize: bufferSize
-        ).asBuffer!
-    }
-}
-
 class Genome {
     enum Combination { case clone, duplex, miracle }
 
-    var randorator = GRandorator()
-
-    let cGenes: Int
     let combination: Combination
-    let genes: UnsafeBufferPointer<Double>
+    let genes: UnsafeBufferPointer<Float>
 
     /// Create a genome with all random values
     /// - Parameter cGenes: The count of genes to create in the genome, that
     ///                     is, the length of the genome.
-    init(cGenes: Int, genes: inout UnsafeMutableBufferPointer<Double>) {
-        self.cGenes = cGenes
+    init(cGenes: Int, genes: UnsafeMutableBufferPointer<Float>?) {
         self.combination = .miracle
+        let randomValues = World.staticRandomer.getBuffer(.random, cElements: cGenes)
 
-        let r = randorator.makeIterator(.random, bufferSize: cGenes)
+        // If caller hasn't specified his own buffer, just point our
+        // genes pointer to the randomer's internal buffer. It's ok to
+        // do this because no one ever changes the genes
+        guard let callerBuffer = genes else { self.genes = randomValues; return }
 
-        // Because vDSP doesn't have a simple copy
-        vDSP.add(0, r, result: &genes)
+        // Caller specified his own buffer; we have to copy into ot
+        cblas_scopy(
+            Int32(cGenes),
+            UnsafePointer(randomValues.baseAddress!), 1,
+            UnsafeMutablePointer<Float>(mutating: callerBuffer.baseAddress!), 1
+        )
 
-        self.genes = .init(rebasing: genes[...])
+        self.genes = UnsafeBufferPointer(callerBuffer)
     }
 
     /// Create a genome using the specified gene sequence
     /// - Parameter genes: The gene values
-    init(genes: UnsafeBufferPointer<Double>) {
-        self.cGenes = genes.count
+    init(genes: UnsafeBufferPointer<Float>) {
         self.combination = .miracle
         self.genes = genes
+
+        var g = UnsafeMutableBufferPointer(mutating: genes)
+        vDSP.clip(g, to: -1...1, result: &g)
     }
 
     /// Create a genome that is a clone of the parent. Cloning involves
@@ -56,19 +46,18 @@ class Genome {
     /// configuration settings.
     /// - Parameter parent: The genome from which to clone
     init(
-        cloneFrom parent: Genome, mutationProbability: Double,
-        genes: inout UnsafeMutableBufferPointer<Double>
+        cloneFrom parent: Genome, mutationProbability: Float,
+        genes: inout UnsafeMutableBufferPointer<Float>
     ) {
-        self.cGenes = parent.cGenes
         self.combination = .clone
 
-        let g = randorator.makeIterator(.gaussian, bufferSize: cGenes)
+        let cGenes = parent.genes.count
+        let mutations = World.staticRandomer.getBuffer(.gaussian, cElements: cGenes)
 
-        // Mark 1's where we want the parent alleles to go, based
-        // on mutation probability
-        Genome.generateMutationMap(randorator, cGenes, mutationProbability, genes: &genes)
+        // Mark 1's where we want to mutate our copies of the parent genes
+        Genome.generateMutationMap(cGenes, mutationProbability, genes: &genes)
 
-        vDSP.multiply(g, genes, result: &genes)
+        vDSP.multiply(parent.genes, mutations, result: &genes)
         vDSP.add(parent.genes, genes, result: &genes)
         vDSP.clip(genes, to: -1...1, result: &genes)
 
@@ -78,14 +67,16 @@ class Genome {
     /// Create a geome that is an exact copy of the parent. No mutations.
     /// - Parameter parent: The genome from which to copy
     /// - Parameter genes: The destination of the new genome
-    init(exactCopyFrom parent: Genome, genes: inout UnsafeMutableBufferPointer<Double>) {
-        self.cGenes = parent.cGenes
+    init(exactCopyFrom parent: Genome, genes: inout UnsafeMutableBufferPointer<Float>) {
         self.combination = .clone
-
-        // vDSP doesn't have a simple copy; I've looked a million times
-        vDSP.add(0, parent.genes, result: &genes)
-
         self.genes = .init(rebasing: genes[...])
+
+        // Strange that vDSP doesn't have a copy; fortunately this works
+        cblas_scopy(
+            Int32(parent.genes.count),
+            UnsafePointer(parent.genes.baseAddress!), 1,
+            UnsafeMutablePointer<Float>(genes.baseAddress!), 1
+        )
     }
 
     /// Create a genome that is the result of mating the two parent
@@ -96,23 +87,22 @@ class Genome {
     ///   - parent1: The other parent
     init(
         mate parent0: Genome, with parent1: Genome,
-        parent0Weight: Double,
-        genes: inout UnsafeMutableBufferPointer<Double>,
-        mutationProbability: Double = 0.5
+        parent0Weight: Float,
+        genes: inout UnsafeMutableBufferPointer<Float>,
+        mutationProbability: Float
     ) {
-        self.cGenes = parent0.cGenes
         self.combination = .duplex
 
-        var randomer = FastRandomerIterator(randomer: GRandorator.randorator, .random)
-        var gaussian = FastRandomerIterator(randomer: GRandorator.randorator, .gaussian)
+        var randomIterator = StaticRandomerIterator(randomer: World.staticRandomer, .random)
+        var gaussianIterator = StaticRandomerIterator(randomer: World.staticRandomer, .gaussian)
 
-        for ss in 0..<cGenes {
-            let takeParent0Gene = randomer.inRange(0..<1) < parent0Weight
-            let yesMutate = randomer.inRange(0..<1) < mutationProbability
+        for ss in 0..<parent0.genes.count {
+            let takeParent0Gene = randomIterator.inRange(0..<1) < parent0Weight
+            let yesMutate = randomIterator.inRange(0..<1) < mutationProbability
 
             genes[ss] = takeParent0Gene ? parent0.genes[ss] : parent1.genes[ss]
 
-            if yesMutate { genes[ss] += gaussian.next()! }
+            if yesMutate { genes[ss] += gaussianIterator.next()! }
         }
 
         vDSP.clip(genes, to: -1...1, result: &genes)
@@ -123,11 +113,13 @@ class Genome {
 
 extension Genome {
     static private func generateMutationMap(
-        _ randorator: GRandorator,
-        _ cGenes: Int, _ mutationProbability: Double,
-        genes: inout UnsafeMutableBufferPointer<Double>
+        _ cGenes: Int, _ mutationProbability: Float,
+        genes: inout UnsafeMutableBufferPointer<Float>
     ) {
-        let s = randorator.makeIterator(.randomPositive, bufferSize: cGenes)
-        (0..<s.count).forEach { genes[$0] = (s[$0] > mutationProbability) ? 0 : 1 }
+        let buffer = World.staticRandomer.getBuffer(.random, cElements: cGenes)
+
+        buffer.enumerated().forEach {
+            genes[$0] = ($1 > mutationProbability) ? 0 : 1
+        }
     }
 }
