@@ -99,10 +99,16 @@ class Genome {
         var gaussianIterator = StaticRandomerIterator(randomer: World.staticRandomer, .gaussian)
 
         for ss in 0..<parent0.genes.count {
-            let takeParent0Gene = randomIterator.inRange(0..<1) < parent0Weight
+            let yesBlend = randomIterator.inRange(0..<1) > mutationProbability
             let yesMutate = randomIterator.inRange(0..<1) < mutationProbability
 
-            genes[ss] = takeParent0Gene ? parent0.genes[ss] : parent1.genes[ss]
+            if yesBlend {
+                genes[ss] = parent0.genes[ss] * parent0Weight +
+                            parent0.genes[ss] * (1 - parent0Weight)
+            } else {
+                let takeParent0Gene = randomIterator.inRange(0..<1) < parent0Weight
+                genes[ss] = takeParent0Gene ? parent0.genes[ss] : parent1.genes[ss]
+            }
 
             if yesMutate { genes[ss] += gaussianIterator.next()! }
         }
